@@ -12,24 +12,26 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  try {
+    const body = await req.json();
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+
+    const { name, email, password } = parsed.data;
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+    }
+
+    const hash = await bcrypt.hash(password, 12);
+    await prisma.user.create({ data: { name, email, password: hash } });
+
+    return NextResponse.json({ ok: true }, { status: 201 });
+  } catch (err) {
+    console.error("[signup]", err);
+    return NextResponse.json({ error: "Server error — check database connection" }, { status: 500 });
   }
-
-  const { name, email, password } = parsed.data;
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return NextResponse.json(
-      { error: "Email already in use" },
-      { status: 409 }
-    );
-  }
-
-  const hash = await bcrypt.hash(password, 12);
-  await prisma.user.create({ data: { name, email, password: hash } });
-
-  return NextResponse.json({ ok: true }, { status: 201 });
 }
