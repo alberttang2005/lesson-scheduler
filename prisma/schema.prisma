@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lessons         Lesson[]
+  recurrenceRules RecurrenceRule[]
+}
+
+model RecurrenceRule {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  frequency String
+  interval  Int       @default(1)
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+
+  lessons Lesson[]
+}
+
+model Lesson {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String          @default("Private Lesson")
+  startTime       DateTime
+  durationMinutes Int
+  recurrenceId    String?
+  recurrenceRule  RecurrenceRule? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+  isException     Boolean         @default(false)
+  exceptionFor    DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
