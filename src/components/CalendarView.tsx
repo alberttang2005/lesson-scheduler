@@ -19,7 +19,7 @@ interface LessonEvent {
   };
 }
 
-export default function CalendarView({ isLoggedIn }: { isLoggedIn: boolean }) {
+export default function CalendarView() {
   const [events, setEvents] = useState<EventInput[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
@@ -39,14 +39,12 @@ export default function CalendarView({ isLoggedIn }: { isLoggedIn: boolean }) {
   }, [fetchEvents]);
 
   function handleDateSelect(arg: DateSelectArg) {
-    if (!isLoggedIn) return;
     setSelectedDate(arg.start);
     setShowCreateModal(true);
     calendarRef.current?.getApi().unselect();
   }
 
   function handleEventClick(arg: EventClickArg) {
-    if (!isLoggedIn) return;
     const ev = arg.event;
     setSelectedLesson({
       id: ev.id,
@@ -57,37 +55,26 @@ export default function CalendarView({ isLoggedIn }: { isLoggedIn: boolean }) {
   }
 
   return (
-    <div className="h-full flex flex-col gap-2">
-      {!isLoggedIn && (
-        <p className="text-sm text-gray-500 text-center">
-          Viewing all scheduled lessons.{" "}
-          <a href="/login" className="text-blue-600 hover:underline">
-            Sign in
-          </a>{" "}
-          to book or manage your own lessons.
-        </p>
-      )}
-      <div className="flex-1">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={{
-            left: "prev,next today",
-            center: "title",
-            right: "dayGridMonth,timeGridWeek",
-          }}
-          events={events}
-          selectable={isLoggedIn}
-          selectMirror={isLoggedIn}
-          select={handleDateSelect}
-          eventClick={handleEventClick}
-          height="100%"
-          nowIndicator
-          eventColor="#2563eb"
-          buttonText={{ today: "Today", month: "Month", week: "Week" }}
-        />
-      </div>
+    <div className="h-full">
+      <FullCalendar
+        ref={calendarRef}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="dayGridMonth"
+        headerToolbar={{
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek",
+        }}
+        events={events}
+        selectable
+        selectMirror
+        select={handleDateSelect}
+        eventClick={handleEventClick}
+        height="100%"
+        nowIndicator
+        eventColor="#2563eb"
+        buttonText={{ today: "Today", month: "Month", week: "Week" }}
+      />
 
       {showCreateModal && (
         <LessonModal

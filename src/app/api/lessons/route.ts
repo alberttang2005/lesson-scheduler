@@ -1,12 +1,21 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createLessonSchema } from "@/schemas/lesson";
 import { generateInstances, type Frequency } from "@/lib/recurrence";
 import { hasConflict } from "@/lib/conflict";
 import type { Lesson } from "@prisma/client";
+
+const SHARED_USER_ID = "shared";
+
+async function ensureSharedUser() {
+  await prisma.user.upsert({
+    where: { id: SHARED_USER_ID },
+    update: {},
+    create: { id: SHARED_USER_ID, name: "Shared", email: "shared@lessonbook.app", password: "" },
+  });
+}
 
 export async function GET() {
   try {
@@ -35,25 +44,22 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await ensureSharedUser();
+    const userId = SHARED_USER_ID;
 
     const body = await req.json();
     const parsed = createLessonSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 });
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
     const { title, startTime: startTimeStr, durationMinutes, frequency, interval } = parsed.data;
-    const userId = session.user.id;
     const startTime = new Date(startTimeStr);
 
     if (frequency === "NONE") {
       const conflict = await hasConflict({ userId, startTime, durationMinutes });
       if (conflict) {
-        return NextResponse.json({ error: "You already have a lesson at this time" }, { status: 409 });
+        return NextResponse.json({ error: "A lesson already exists at this time" }, { status: 409 });
       }
       const lesson = await prisma.lesson.create({
         data: { userId, title, startTime, durationMinutes },
@@ -101,6 +107,6 @@ export async function POST(req: Request) {
     );
   } catch (err) {
     console.error("[lessons POST]", err);
-    return NextResponse.json({ error: "Server error — check database connection" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
